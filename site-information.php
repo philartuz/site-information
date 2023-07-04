@@ -52,7 +52,7 @@ function plugin_list_replica_page() {
                 'version' => get_bloginfo('version'),
                 'site_language' => get_bloginfo('language'),
                 'user_language' => get_user_locale(),
-                'timezone' => get_option('timezone_string'),
+                'timezone' => (get_option('timezone_string') ? get_option('timezone_string') : 'Not set'),
                 'permalink' => get_option('permalink_structure'),
                 'https_status' => (is_ssl() ? 'true' : 'false'),
                 'multisite' => (is_multisite() ? 'true' : 'false')
@@ -71,12 +71,16 @@ function plugin_list_replica_page() {
                 'php_post_max_size' => ini_get('post_max_size'),
                 'curl_version' => curl_version()['version'],
                 'suhosin' => (extension_loaded('suhosin') ? 'true' : 'false'),
-                'imagick_availability' => (extension_loaded('imagick') ? 'true' : 'false')
+                'imagick_availability' => (extension_loaded('imagick') ? 'true' : 'false'),
+                'pretty_permalinks' => (get_option('permalink_structure') ? 'true' : 'false'),
+                'htaccess_extra_rules' => (get_option('rewrite_rules') ? 'true' : 'false'),
             ),
             'wp-database' => array(
                 'extension' => 'mysqli',
                 'server_version' => $wpdb->db_version(),
-                'client_version' => $wpdb->db_server_info()
+                'client_version' => $wpdb->db_server_info(),
+                'max_allowed_packet' => $wpdb->get_var("SELECT @@max_allowed_packet"),
+                'max_connections' => $wpdb->get_var("SELECT @@max_connections")
             ),
             'wp-constants' => array(
                 'WP_HOME' => get_option('home'), // Replace WP_HOME with get_option('home')
@@ -94,7 +98,8 @@ function plugin_list_replica_page() {
                 'COMPRESS_SCRIPTS' => (defined('COMPRESS_SCRIPTS') ? 'true' : 'false'),
                 'COMPRESS_CSS' => (defined('COMPRESS_CSS') ? 'true' : 'false'),
                 'WP_ENVIRONMENT_TYPE' => (defined('WP_ENVIRONMENT_TYPE') ? WP_ENVIRONMENT_TYPE : ''),
-                'AUTOMATIC_UPDATER_DISABLED' => (defined('AUTOMATIC_UPDATER_DISABLED') && AUTOMATIC_UPDATER_DISABLED ? 'true' : 'false')
+                'DB_CHARSET' => (defined('DB_CHARSET') ? DB_CHARSET : 'undefined'),
+                'DB_COLLATE' => (defined('DB_COLLATE') && DB_COLLATE !== '' ? DB_COLLATE : 'undefined'),
             ),
             'wp-filesystem' => array(
                 'wordpress' => (is_writable(ABSPATH) ? 'writable' : 'not writable'),
@@ -113,7 +118,9 @@ function plugin_list_replica_page() {
                 'upload_max_filesize' => ini_get('upload_max_filesize'),
                 'max_effective_size' => size_format(wp_max_upload_size()),
                 'max_file_uploads' => ini_get('max_file_uploads'),
-                'gd_version' => 'bundled (' . (function_exists('gd_info') ? gd_info()['GD Version'] : 'GD library not available') . ' compatible)'
+                'gd_version' => 'bundled (' . (function_exists('gd_info') ? gd_info()['GD Version'] : 'GD library not available') . ' compatible)',
+                'gd_formats' => (function_exists('gd_info') && isset(gd_info()['formats'])) ? implode(', ', gd_info()['formats']) : 'Not available',
+                'ghostscript_version' => (function_exists('gs_version') ? gs_version() : 'Not available')
             )
         );
         
@@ -169,7 +176,7 @@ function plugin_list_replica_page() {
         echo 'Version: ' . get_bloginfo('version') . '<br>';
         echo 'Site Language: ' . get_bloginfo('language') . '<br>';
         echo 'User Language: ' . get_user_locale() . '<br>';
-        echo 'Timezone: ' . get_option('timezone_string') . '<br>';
+        echo 'Timezone: ' . (get_option('timezone_string') ? get_option('timezone_string') : 'Not set') . '<br>';
         echo 'Permalink: ' . get_option('permalink_structure') . '<br>';
         echo 'HTTPS Status: ' . (is_ssl() ? 'true' : 'false') . '<br>';
         echo 'Multisite: ' . (is_multisite() ? 'true' : 'false') . '<br>';
@@ -219,6 +226,8 @@ function plugin_list_replica_page() {
         echo 'cURL Version: ' . curl_version()['version'] . '<br>';
         echo 'Suhosin: ' . (extension_loaded('suhosin') ? 'true' : 'false') . '<br>';
         echo 'Imagick Availability: ' . (extension_loaded('imagick') ? 'true' : 'false') . '<br>';
+        echo 'pretty_permalinks: ' . (get_option('permalink_structure') ? 'true' : 'false') . '<br>';
+        echo 'htaccess_extra_rules: ' . (get_option('rewrite_rules') ? 'true' : 'false') . '<br>';
 
         // Display wp-database information
         echo '<h2>wp-database</h2>';
@@ -226,7 +235,9 @@ function plugin_list_replica_page() {
         echo 'Extension: mysqli<br>';
         echo 'Server Version: ' . $wpdb->db_version() . '<br>';
         echo 'Client Version: ' . $wpdb->db_server_info() . '<br>';
-
+        echo 'Max Allowed Packet: ' . $wpdb->get_var("SELECT @@max_allowed_packet") . '<br>';
+        echo 'Max Connections: ' .  $wpdb->get_var("SELECT @@max_connections") . '<br>';
+        
         // Define WP_HOME constant
         if (!defined('WP_HOME')) {
             define('WP_HOME', get_home_url());
@@ -245,22 +256,25 @@ function plugin_list_replica_page() {
             'WP_PLUGIN_DIR' => WP_PLUGIN_DIR,
             'WP_MEMORY_LIMIT' => WP_MEMORY_LIMIT,
             'WP_MAX_MEMORY_LIMIT' => WP_MAX_MEMORY_LIMIT,
-            'WP_DEBUG' => WP_DEBUG,
-            'WP_DEBUG_DISPLAY' => WP_DEBUG_DISPLAY,
-            'WP_DEBUG_LOG' => WP_DEBUG_LOG,
-            'SCRIPT_DEBUG' => SCRIPT_DEBUG,
-            'WP_CACHE' => WP_CACHE,
-            'CONCATENATE_SCRIPTS' => defined('CONCATENATE_SCRIPTS') ? CONCATENATE_SCRIPTS : 'undefined',
-            'COMPRESS_SCRIPTS' => defined('COMPRESS_SCRIPTS') ? COMPRESS_SCRIPTS : 'undefined',
-            'COMPRESS_CSS' => defined('COMPRESS_CSS') ? COMPRESS_CSS : 'undefined',
-            'WP_ENVIRONMENT_TYPE' => WP_ENVIRONMENT_TYPE,
-            'DB_CHARSET' => defined('DB_CHARSET') ? DB_CHARSET : 'undefined',
-            'DB_COLLATE' => defined('DB_COLLATE') ? DB_COLLATE : 'undefined'
+            'WP_DEBUG' => (defined('WP_DEBUG') && WP_DEBUG ? 'true' : 'false'),
+            'WP_DEBUG_DISPLAY' => (defined('WP_DEBUG_DISPLAY') && WP_DEBUG_DISPLAY ? 'true' : 'false'),
+            'WP_DEBUG_LOG' => (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG ? 'true' : 'false'),
+            'SCRIPT_DEBUG' => (defined('SCRIPT_DEBUG') && SCRIPT_DEBUG ? 'true' : 'false'),
+            'WP_CACHE' => (defined('WP_CACHE') && WP_CACHE ? 'true' : 'false'),
+            'CONCATENATE_SCRIPTS' => (defined('CONCATENATE_SCRIPTS') ? 'true' : 'false'),
+            'COMPRESS_SCRIPTS' => (defined('COMPRESS_SCRIPTS') ? 'true' : 'false'),
+            'COMPRESS_CSS' => (defined('COMPRESS_CSS') ? 'true' : 'false'),
+            'WP_ENVIRONMENT_TYPE' => (defined('WP_ENVIRONMENT_TYPE') ? WP_ENVIRONMENT_TYPE : ''),
+            'DB_CHARSET' => (defined('DB_CHARSET') ? DB_CHARSET : 'undefined'),
+            'DB_COLLATE' => (defined('DB_COLLATE') ? DB_COLLATE : 'undefined'),
         );
 
         // Display wp-constants information
         echo '<h2>wp-constants</h2>';
         foreach ($wp_constants as $constant => $value) {
+            if ($value === '') {
+                $value = 'undefined';
+            }
             echo $constant . ': ' . $value . '<br>';
         }
 
@@ -284,7 +298,9 @@ function plugin_list_replica_page() {
         echo 'max_effective_size: ' . size_format(wp_max_upload_size()) . '<br>';
         echo 'max_file_uploads: ' . ini_get('max_file_uploads') . '<br>';
         echo 'gd_version: bundled (' . (function_exists('gd_info') ? gd_info()['GD Version'] : 'GD library not available') . ' compatible)<br>';
-        
+        echo 'gd_formats: ' . (function_exists('gd_info') && isset(gd_info()['formats']) ? implode(', ', gd_info()['formats']) : 'Not available') . '<br>';
+        echo 'ghostscript_version: ' . (function_exists('gs_version') ? gs_version() : 'not available') . '<br>';
+
         echo '</div>';
     }
 
