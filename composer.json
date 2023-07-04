@@ -1,0 +1,16 @@
+{
+  "name": "LingLing40Hour/site-information",
+  "description": "Replicates the functionality of the site health info and displays the output on a WordPress admin page.",
+  "keywords": ["wordpress", "plugin"],
+  "homepage": "https://github.com/LingLing40Hour/site-information",
+  "authors": [
+    {
+      "name": "Phil Artuz",
+      "homepage": "https://github.com/LingLing40Hour/site-information"
+    }
+  ],
+  "type": "wordpress-plugin",
+  "require": {
+    "php": ">=8.0"
+  }
+}
